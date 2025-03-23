@@ -1,0 +1,11 @@
+name: Containerd Directory Usage Collector
+description: Collect Containerd directory usage information
+enabled: true
+commands: []
+scripts:
+  - name: check_containerd_usage
+    path: kubernetes/check_containerd_usage.sh
+    description: Check containerd directory disk usage and related container information
+    category: kubernetes
+    args: ""
+    summary: true 

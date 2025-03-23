@@ -1,0 +1,8 @@
+---
+- name: Execute scripts for node
+  include_tasks: tasks/execute_single_local_script.yml
+  loop: "{{ local_scripts }}"
+  loop_control:
+    loop_var: script_item
+  vars:
+    current_node: "{{ target_node }}"

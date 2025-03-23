@@ -1,0 +1,11 @@
+name: Kubernetes Node Disk Uasge Collector
+description: Collect Kubernetes node disk usage information
+enabled: true
+commands: []
+scripts:
+  - name: check_kubelet_volumes
+    path: kubernetes/check_kubelet_volumes.sh
+    description: Check kubelet volume disk usage and related pod information
+    category: kubernetes
+    args: ""
+    summary: true

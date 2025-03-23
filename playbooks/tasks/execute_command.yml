@@ -1,0 +1,21 @@
+---
+- name: Run command on node
+  shell: "{{ command_item.cmd }}"
+  register: command_output
+  ignore_errors: true
+
+- name: Save command output
+  delegate_to: localhost
+  copy:
+    content: "{{ command_output.stdout }}\n"
+    dest: "{{ output_dir }}/{{ command_item.name }}"
+    mode: '0644'
+  when: command_output.rc == 0
+
+- name: Save error output
+  delegate_to: localhost
+  copy:
+    content: "Error executing command: {{ command_item.cmd }}\n{{ command_output.stderr if command_output is defined else 'Command failed' }}\n"
+    dest: "{{ output_dir }}/{{ command_item.name }}_error"
+    mode: '0644'
+  when: command_output.rc != 0 

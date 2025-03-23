@@ -1,0 +1,30 @@
+name: System Information Collector
+description: Collect basic system information
+enabled: false
+commands:
+  - name: kernel_version
+    cmd: uname -a
+    category: system
+    description: Kernel version information
+  - name: os_version
+    cmd: cat /etc/os-release
+    category: system
+    description: Operating system version
+  - name: cpu_info
+    cmd: lscpu
+    category: system
+    description: CPU information
+  - name: memory_info
+    cmd: free -gh
+    category: system
+    description: Memory usage information
+  - name: disk_usage
+    cmd: df -Th
+    category: system
+    description: Disk usage information
+  - name: system_load
+    cmd: uptime
+    category: system
+    description: System load information
+
+scripts: []

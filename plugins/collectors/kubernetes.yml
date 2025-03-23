@@ -1,0 +1,34 @@
+name: Kubernetes Information Collector
+description: Collect Kubernetes node and component information
+enabled: false
+commands:
+  - name: kubelet_status
+    cmd: systemctl status kubelet
+    category: kubernetes
+    description: Kubelet service status
+  - name: kubelet_config
+    cmd: cat /var/lib/kubelet/config.yaml
+    category: kubernetes
+    description: Kubelet configuration
+  - name: pod_list
+    cmd: crictl pods
+    category: kubernetes
+    description: Running pods
+  - name: container_list
+    cmd: crictl ps -a
+    category: kubernetes
+    description: Container list
+  - name: container_stats
+    cmd: crictl stats
+    category: kubernetes
+    description: Container Stats
+  - name: kubelet_logs
+    cmd: journalctl -u kubelet -n 1000
+    category: kubernetes
+    description: Kubelet service logs
+  - name: kubernetes_node_info
+    cmd: kubectl describe node {{ inventory_hostname }}
+    category: kubernetes
+    description: Node information
+    run_on: localhost
+scripts: []

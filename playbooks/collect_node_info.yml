@@ -1,0 +1,141 @@
+---
+- name: Load plugins and prepare collection
+  hosts: localhost
+  gather_facts: true
+  vars:
+    base_dir: "{{ playbook_dir }}/.."
+    timestamp: "{{ ansible_date_time.iso8601_basic_short }}"
+  tasks:
+    - name: Load collector plugins
+      command:
+        cmd: "python3 {{ base_dir }}/lib/plugin_loader.py --list-collectors"
+      register: collectors
+
+    - name: Set collector data
+      set_fact:
+        all_commands: "{{ (collectors.stdout | from_yaml) | map(attribute='commands') | list | flatten }}"
+        all_scripts: "{{ (collectors.stdout | from_yaml) | map(attribute='scripts') | list | flatten }}"
+        current_timestamp: "{{ timestamp }}"
+        summary_configs: "{{ (collectors.stdout | from_yaml) | map(attribute='commands') | list | flatten | selectattr('summary', 'defined') | selectattr('summary', 'equalto', True) | list + 
+                           (collectors.stdout | from_yaml) | map(attribute='scripts') | list | flatten | selectattr('summary', 'defined') | selectattr('summary', 'equalto', True) | list }}"
+        cacheable: yes
+
+    - name: Categorize commands and scripts
+      set_fact:
+        node_commands: "{{ all_commands | selectattr('run_on', 'undefined') | list }}"
+        local_commands: "{{ all_commands | selectattr('run_on', 'defined') | selectattr('run_on', 'equalto', 'localhost') | list }}"
+        node_scripts: "{{ all_scripts | selectattr('run_on', 'undefined') | list }}"
+        local_scripts: "{{ all_scripts | selectattr('run_on', 'defined') | selectattr('run_on', 'equalto', 'localhost') | list }}"
+        cacheable: yes
+
+    - name: Debug commands
+      debug:
+        msg: 
+          - "Node commands: {{ node_commands | length }}"
+          - "Local commands: {{ local_commands | length }}"
+          - "Node scripts: {{ node_scripts | length }}"
+          - "Local scripts: {{ local_scripts | length }}"
+
+
+- name: Collect information from Kubernetes nodes
+  hosts: nodes
+  gather_facts: false
+  vars:
+    output_dir: "{{ playbook_dir }}/../output/{{ hostvars['localhost']['current_timestamp'] }}/{{ inventory_hostname }}"
+  tasks:
+    - name: Get variables from localhost
+      set_fact:
+        node_commands: "{{ hostvars['localhost']['node_commands'] }}"
+        node_scripts: "{{ hostvars['localhost']['node_scripts'] }}"
+
+    - name: Create output directory for host
+      delegate_to: localhost
+      file:
+        path: "{{ output_dir }}"
+        state: directory
+        mode: '0755'
+
+    - name: Execute node commands
+      include_tasks: tasks/execute_command.yml
+      loop: "{{ node_commands }}"
+      loop_control:
+        loop_var: command_item
+      when: node_commands is defined and node_commands | length > 0
+
+    - name: Execute node scripts
+      include_tasks: tasks/execute_script.yml
+      loop: "{{ node_scripts | list }}"
+      loop_control:
+        loop_var: script_item
+      when: node_scripts is defined and node_scripts | length > 0
+
+
+- name: Execute localhost commands for each node
+  hosts: localhost
+  gather_facts: false
+  vars:
+    base_dir: "{{ playbook_dir }}/.."
+  tasks:
+    - name: Create output directory for each node
+      file:
+        path: "{{ base_dir }}/output/{{ hostvars['localhost']['current_timestamp'] }}/{{ item }}"
+        state: directory
+        mode: '0755'
+      loop: "{{ groups['nodes'] }}"
+
+    - name: Execute local commands for each node
+      include_tasks: tasks/execute_local_command.yml
+      vars:
+        target_node: "{{ item }}"
+      loop: "{{ groups['nodes'] }}"
+      when: 
+        - local_commands is defined
+        - local_commands | length > 0
+
+- name: Execute localhost scripts for each node
+  hosts: localhost
+  gather_facts: false
+  vars:
+    base_dir: "{{ playbook_dir }}/.."
+    timestamp: "{{ hostvars['localhost']['current_timestamp'] }}"
+  tasks:
+    - name: Execute local scripts for each node
+      include_tasks: tasks/execute_local_script.yml
+      vars:
+        target_node: "{{ item }}"
+      loop: "{{ groups['nodes'] }}"
+      when: 
+        - local_scripts is defined
+        - local_scripts | length > 0
+
+- name: Generate summary reports for collected data
+  hosts: localhost
+  gather_facts: false
+  vars:
+    base_dir: "{{ playbook_dir }}/.."
+    timestamp: "{{ hostvars['localhost']['current_timestamp'] }}"
+    output_dir: "{{ base_dir }}/output/{{ timestamp }}"
+  tasks:
+    - name: Create summary directory
+      file:
+        path: "{{ output_dir }}/summary"
+        state: directory
+        mode: '0755'
+
+    - name: Generate summary reports
+      loop: "{{ hostvars['localhost']['summary_configs'] }}"
+      loop_control:
+        loop_var: summary_item
+      shell: |
+        echo "# {{ summary_item.name }} - Summary" > "{{ output_dir }}/summary/{{ summary_item.name | default(summary_item.name + '_summary.txt') }}"
+        echo "# Generated at: $(date)" >> "{{ output_dir }}/summary/{{ summary_item.name | default(summary_item.name + '_summary.txt') }}"
+        echo "# ----------------------------------------" >> "{{ output_dir }}/summary/{{ summary_item.name | default(summary_item.name + '_summary.txt') }}"
+        for node in {{ groups['nodes'] | join(' ') }}; do
+          echo "# Node: $node" >> "{{ output_dir }}/summary/{{ summary_item.name | default(summary_item.name + '_summary.txt') }}"
+          if [ -f "{{ output_dir }}/$node/{{ summary_item.name }}" ]; then
+            cat "{{ output_dir }}/$node/{{ summary_item.name }}" >> "{{ output_dir }}/summary/{{ summary_item.name | default(summary_item.name + '_summary.txt') }}"
+          else
+            echo "# No data available" >> "{{ output_dir }}/summary/{{ summary_item.name | default(summary_item.name + '_summary.txt') }}"
+          fi
+          echo "# ----------------------------------------" >> "{{ output_dir }}/summary/{{ summary_item.name | default(summary_item.name + '_summary.txt') }}"
+        done

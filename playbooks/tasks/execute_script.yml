@@ -1,0 +1,33 @@
+---
+- name: Copy script to node
+  copy:
+    src: "{{ playbook_dir }}/../plugins/collectors/{{ script_item.path }}"
+    dest: "/tmp/{{ script_item.name }}"
+    mode: '0755'
+  register: script_copy
+
+- name: Execute script
+  shell: "/tmp/{{ script_item.name }} {{ script_item.args }}"
+  register: script_output
+  ignore_errors: true
+
+- name: Save script output
+  delegate_to: localhost
+  copy:
+    content: "{{ script_output.stdout }}\n"
+    dest: "{{ output_dir }}/{{ script_item.name }}"
+    mode: '0644'
+  when: script_output.rc == 0
+
+- name: Save script error output
+  delegate_to: localhost
+  copy:
+    content: "Error executing script: {{ script_item.path }}\n{{ script_output.stderr if script_output is defined else 'Script failed' }}\n"
+    dest: "{{ output_dir }}/{{ script_item.name }}_error"
+    mode: '0644'
+  when: script_output.rc != 0
+
+- name: Clean up script
+  file:
+    path: "/tmp/{{ script_item.name }}"
+    state: absent 

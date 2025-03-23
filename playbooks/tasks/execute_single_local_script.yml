@@ -1,0 +1,31 @@
+---
+- name: "[{{ current_node }}] Copy script {{ script_item.name }} to localhost"
+  copy:
+    src: "{{ playbook_dir }}/../plugins/collectors/{{ script_item.path }}"
+    dest: "/tmp/{{ script_item.name }}"
+    mode: '0755'
+  register: script_copy
+
+- name: "[{{ current_node }}] Execute script {{ script_item.name }}"
+  shell: "/tmp/{{ script_item.name }} {{ script_item.args | replace('{{ inventory_hostname }}', current_node) }}"
+  register: script_output
+  ignore_errors: true
+
+- name: "[{{ current_node }}] Save output of {{ script_item.name }} to {{ current_node }}/{{ script_item.name }}"
+  copy:
+    content: "{{ script_output.stdout }}\n"
+    dest: "{{ base_dir }}/output/{{ timestamp }}/{{ current_node }}/{{ script_item.name }}"
+    mode: '0644'
+  when: script_output.rc == 0
+
+- name: "[{{ current_node }}] Save error output of {{ script_item.name }} to {{ current_node }}/{{ script_item.name }}_error"
+  copy:
+    content: "Error executing script: {{ script_item.path }}\n{{ script_output.stderr if script_output is defined else 'Script failed' }}\n"
+    dest: "{{ base_dir }}/output/{{ timestamp }}/{{ current_node }}/{{ script_item.name }}_error"
+    mode: '0644'
+  when: script_output.rc != 0
+
+- name: "[{{ current_node }}] Clean up script {{ script_item.name }}"
+  file:
+    path: "/tmp/{{ script_item.name }}"
+    state: absent 

@@ -1,0 +1,8 @@
+---
+- name: Run local commands for node
+  include_tasks: tasks/execute_single_local_command.yml
+  loop: "{{ local_commands }}"
+  loop_control:
+    loop_var: command_item
+  vars:
+    current_node: "{{ target_node }}"

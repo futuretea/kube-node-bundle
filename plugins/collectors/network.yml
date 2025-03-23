@@ -1,0 +1,26 @@
+name: Network Information Collector
+description: Collect network configuration and status
+enabled: false
+commands:
+  - name: network_interfaces
+    cmd: ip -s addr
+    category: network
+    description: Network interface details
+  - name: network_routes
+    cmd: ip route
+    category: network
+    description: Routing table information
+  - name: network_connections
+    cmd: ss -tunlp
+    category: network
+    description: Active network connections
+  - name: iptables_rules
+    cmd: iptables-save
+    category: network
+    description: Firewall rules
+  - name: dns_resolv
+    cmd: cat /etc/resolv.conf
+    category: network
+    description: DNS configuration
+
+scripts: []
