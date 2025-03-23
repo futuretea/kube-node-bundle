@@ -7,7 +7,7 @@
   register: script_copy
 
 - name: Execute script
-  shell: "/tmp/{{ script_item.name }} {{ script_item.args }}"
+  shell: "bash /tmp/{{ script_item.name }} {{ script_item.args }}"
   register: script_output
   ignore_errors: true
 

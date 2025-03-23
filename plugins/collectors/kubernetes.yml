@@ -30,5 +30,5 @@ commands:
     cmd: kubectl describe node {{ inventory_hostname }}
     category: kubernetes
     description: Node information
-    run_on: localhost
+    run_on_local: true
 scripts: []

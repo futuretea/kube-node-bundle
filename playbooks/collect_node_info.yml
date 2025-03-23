@@ -4,7 +4,7 @@
   gather_facts: true
   vars:
     base_dir: "{{ playbook_dir }}/.."
-    timestamp: "{{ ansible_date_time.iso8601_basic_short }}"
+    timestamp: "{{ '%Y%m%d_%H%M%S' | strftime }}"
   tasks:
     - name: Load collector plugins
       command:
@@ -16,16 +16,16 @@
         all_commands: "{{ (collectors.stdout | from_yaml) | map(attribute='commands') | list | flatten }}"
         all_scripts: "{{ (collectors.stdout | from_yaml) | map(attribute='scripts') | list | flatten }}"
         current_timestamp: "{{ timestamp }}"
-        summary_configs: "{{ (collectors.stdout | from_yaml) | map(attribute='commands') | list | flatten | selectattr('summary', 'defined') | selectattr('summary', 'equalto', True) | list + 
-                           (collectors.stdout | from_yaml) | map(attribute='scripts') | list | flatten | selectattr('summary', 'defined') | selectattr('summary', 'equalto', True) | list }}"
+        summary_configs: "{{ (collectors.stdout | from_yaml) | map(attribute='commands') | list | flatten | selectattr('summary', 'defined') | list + 
+                           (collectors.stdout | from_yaml) | map(attribute='scripts') | list | flatten | selectattr('summary', 'defined') | list }}"
         cacheable: yes
 
     - name: Categorize commands and scripts
       set_fact:
-        node_commands: "{{ all_commands | selectattr('run_on', 'undefined') | list }}"
-        local_commands: "{{ all_commands | selectattr('run_on', 'defined') | selectattr('run_on', 'equalto', 'localhost') | list }}"
-        node_scripts: "{{ all_scripts | selectattr('run_on', 'undefined') | list }}"
-        local_scripts: "{{ all_scripts | selectattr('run_on', 'defined') | selectattr('run_on', 'equalto', 'localhost') | list }}"
+        node_commands: "{{ all_commands | selectattr('run_on_local', 'undefined') | list }}"
+        local_commands: "{{ all_commands | selectattr('run_on_local', 'defined') | list }}"
+        node_scripts: "{{ all_scripts | selectattr('run_on_local', 'undefined') | list }}"
+        local_scripts: "{{ all_scripts | selectattr('run_on_local', 'defined') | list }}"
         cacheable: yes
 
     - name: Debug commands
